@@ -1,5 +1,12 @@
 # DHIS2 Dashboard Pruner App
 
+> ![Maturity: Experimental](https://img.shields.io/badge/maturity-Experimental-orange)  
+> Intended use: tool to prune dashboards that are empty or have not been actively viewed in the last year.
+> Maintainers: HISP Centre implementation team.
+>
+> **WARNING**  
+> This tool is intended to be used by system administrators, not end users. It is available as a DHIS2 app, but has not been through the same rigorous testing as normal core apps. It should be used with care, and always tested in a development environment.
+
 ## License
 © Copyright University of Oslo 2004-2025. Licensed under BSD-3-Clause. See LICENSE for details.
 
