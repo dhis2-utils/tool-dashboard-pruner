@@ -1,0 +1,66 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - 'v*.*.*'
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: 22
+                  cache: yarn
+
+            # Warn, never fail: a wrong release can be deleted and recreated, but a
+            # protected tag cannot be moved, so exiting here would burn the version.
+            - name: Check tag against package.json version
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  TAG="${GITHUB_REF_NAME#v}"
+                  if [ "$VERSION" != "$TAG" ]; then
+                    echo "::warning::Tag $GITHUB_REF_NAME does not match package.json version $VERSION; the attached bundle will carry $VERSION"
+                  fi
+
+            - name: Install dependencies
+              # --ignore-scripts: dependency lifecycle scripts are not needed to
+              # build this app and running them would execute third-party code in CI.
+              run: yarn install --frozen-lockfile --ignore-scripts
+
+            - name: Build
+              run: yarn run zip
+
+            - name: Extract changelog section
+              # Tags are protected: they cannot be deleted or moved. So a missing
+              # changelog section must NOT fail the job — that would burn the
+              # version number with no way to retry it. Warn and fall back to a
+              # generic note instead.
+              run: |
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  awk -v ver="$VERSION" '
+                    BEGIN { pat = ver; gsub(/\./, "\\.", pat) }
+                    # Accept both "## [1.2.3] - date" and "## 1.2.3 - date"
+                    $0 ~ "^## \\[?" pat "\\]?([^0-9]|$)" { found = 1; next }
+                    found && /^## / { exit }
+                    found { print }
+                  ' CHANGELOG.md > release-notes.md
+                  if [ ! -s release-notes.md ]; then
+                    echo "::warning::No CHANGELOG.md section for $VERSION; using a generic note"
+                    echo "Release $GITHUB_REF_NAME" > release-notes.md
+                  fi
+
+            - name: Create GitHub release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release create "$GITHUB_REF_NAME" \
+                    --title "$GITHUB_REF_NAME" \
+                    --notes-file release-notes.md \
+                    compiled/*.zip
