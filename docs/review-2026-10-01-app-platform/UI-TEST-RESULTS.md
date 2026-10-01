@@ -1,6 +1,6 @@
-# UI test results: Dashboard Pruner Tool v0.2.0 (App Platform)
+# UI test results: Dashboard Pruner Tool v1.0.0 (App Platform)
 
-Tested: 2026-10-01 · Mode: production zip installed on each instance (`build/bundle/Dashboard-Pruner-Tool-0.2.0.zip`),
+Tested: 2026-10-01 · Mode: production zip installed on each instance (`build/bundle/Dashboard-Pruner-Tool-1.0.0.zip`),
 plus one extra run against the dev server (`d2-app-scripts start --proxy`) on 2.42 ·
 Suite: `e2e/seed.py` + `e2e/test_pruner.py` (Playwright, Chromium headless)
 
@@ -27,7 +27,7 @@ on any unexpected console, page or HTTP error.
 
 | Flow                          | 2.40 SL   | 2.41 Lao   | 2.42 SL   | 2.43 Lao              | What is asserted                                                                                       |
 | ----------------------------- | --------- | ---------- | --------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
-| Install over legacy 0.1.9     | —         | —          | PASS      | —                     | The same app key upgrades it in place, giving one app at version 0.2.0                                 |
+| Install over legacy 0.1.9     | —         | —          | PASS      | —                     | The same app key upgrades it in place, giving one app at version 1.0.0                                 |
 | Default check (no items)      | PASS (6)  | PASS (7)   | PASS (6)  | PASS (7)              | The table total equals a fresh server-side run of `dashboards_no_items`                                |
 | Not viewed in one year        | PASS (33) | PASS (174) | PASS (33) | PASS (174)            | The total equals the API result. Lao spans 4 pages. On ≤2.41 most rows come from by-id lookups         |
 | Search + public-access labels | PASS      | PASS       | PASS      | PASS                  | Search narrows the table to the 4 private rows. A view-only public dashboard shows "Public (can view)" |
@@ -73,7 +73,7 @@ from the platform:
 
 ## Legacy 0.1.9 comparison (installed on the same instances)
 
-| Behaviour                                                             | 0.1.9 (webpack)                                           | 0.2.0 (App Platform)           |
+| Behaviour                                                             | 0.1.9 (webpack)                                           | 1.0.0 (App Platform)           |
 | --------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------ |
 | Delete one dashboard, then the list refreshes                         | **The deleted dashboard is still listed** (2.42 SL, live) | The row is gone (all versions) |
 | A dashboard named `<img src=x onerror=…>`, created by a non-superuser | **Script runs in the admin's session** (2.43 Lao, live)   | The name is shown as text      |

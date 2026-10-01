@@ -1,4 +1,4 @@
-# Review findings: Dashboard Pruner Tool v0.2.0 (App Platform migration)
+# Review findings: Dashboard Pruner Tool v1.0.0 (App Platform migration)
 
 Reviewed: 2026-10-01 · Scope: code review + functional test (multi-version), after migrating from the
 webpack/jQuery tool to the App Platform · Reviewer: agent (Claude Code, Opus 5.5, plus an independent
@@ -16,7 +16,7 @@ The legacy 0.1.x app has two serious defects, both reproduced live:
 - **Stored XSS.** Any user who can create a dashboard can run script in the administrator's session.
 - **Deleted dashboards come back.** After a delete, the list shows the deleted dashboards again.
 
-Both are gone in 0.2.0. That alone is a reason to ship this version. 0.2.0 keeps the old app key, so it
+Both are gone in 1.0.0. That alone is a reason to ship this version. 1.0.0 keeps the old app key, so it
 upgrades installed 0.1.x copies in place.
 
 Open items are LOW only.
@@ -32,7 +32,7 @@ Open items are LOW only.
 - **What**: a dashboard named `<img src=x onerror=…>` runs script in the session of whoever opens the
   pruner, typically a superuser. On 2.43 Lao, a non-superuser (`pruner_tester`) created such a dashboard,
   and the script ran when `local_admin` opened 0.1.9.
-- **Fix**: done in 0.2.0. React renders the name as text, which was verified live on the same instance.
+- **Fix**: done in 1.0.0. React renders the name as text, which was verified live on the same instance.
 
 #### H2. Deleted dashboards reappear after deleting
 
@@ -43,7 +43,7 @@ Open items are LOW only.
   it receives the previous result.
 - **Effect**: live on 2.42, the deleted dashboard was still listed after the "Dashboard deleted" alert.
   Deleting it again fails with a 404.
-- **Fix**: done in 0.2.0. The app records the cached run's `startTime` before POSTing, then polls until a
+- **Fix**: done in 1.0.0. The app records the cached run's `startTime` before POSTing, then polls until a
   result with a different `startTime` appears (`src/hooks/useIntegrityCheck.ts`).
 
 ### MEDIUM
@@ -55,13 +55,13 @@ Open items are LOW only.
   dashboards that are not empty. It ticks the `.dashboard-select` checkboxes, but DataTables only keeps
   the current page's rows in the DOM, so the delete covers the first page only. (Found by code reading;
   not reproduced live.)
-- **Fix**: done in 0.2.0. A select-all checkbox selects exactly the rows matching the search, and a
+- **Fix**: done in 1.0.0. A select-all checkbox selects exactly the rows matching the search, and a
   confirmation dialog lists them.
 
 #### M2. View-only public dashboards shown as "Private"
 
 - **Where**: `src/app.js:98` (0.1.9): `sharing.public.startsWith("rw")`.
-- **Fix**: done in 0.2.0, which shows "Public (can view)", "Public (can edit)" and "Not public".
+- **Fix**: done in 1.0.0, which shows "Public (can view)", "Public (can edit)" and "Not public".
 
 ### LOW
 
@@ -76,14 +76,14 @@ This was verified live on 2.40, 2.41, 2.42 and 2.43:
   shares with no one. Every version also deleted four such dashboards through the UI.
 - Non-superusers only see rows they can already delete.
 
-Removed in 0.2.0, together with the "Share with me" button, which had the same no-op effect.
+Removed in 1.0.0, together with the "Share with me" button, which had the same no-op effect.
 
 #### L2. "Last updated" column showed the last-viewed date for the not-viewed check — `src/app.js:75-83` (0.1.9)
 
-The integrity SQL's `comment` is the last-view timestamp. 0.2.0 shows it in a separate "Last viewed" column,
+The integrity SQL's `comment` is the last-view timestamp. 1.0.0 shows it in a separate "Last viewed" column,
 with "Never" for dashboards that were never viewed.
 
-### Found during the multi-version pass (fixed in 0.2.0)
+### Found during the multi-version pass (fixed in 1.0.0)
 
 #### M3. Up to 2.41, superusers' dashboard lists leave out dashboards not shared with them
 
@@ -91,7 +91,7 @@ with "Never" for dashboards that were never viewed.
 - **What**: the integrity check sees every dashboard, but up to 2.41 the dashboards list a superuser gets
   back is filtered by sharing. On the Lao demo that is 3 of 198 dashboards. Two versions of the app were
   affected:
-    - The legacy app and the first 0.2.0 build showed the missing rows with "Unknown" for created and public
+    - The legacy app and the first 1.0.0 build showed the missing rows with "Unknown" for created and public
       access. The first matrix pass did not assert those columns.
     - After the H1 fix in FIXES.md (#1), which drops rows without a matching dashboard, those rows vanished
       entirely on 2.40 and 2.41. The rerun caught that: 2 of 6 empty dashboards were shown.
@@ -114,7 +114,7 @@ with "Never" for dashboards that were never viewed.
       failure then reads "used by a push analysis; delete the push analysis first".
     - This is gated by `FEATURES.pushAnalysisRemoved`.
 
-## Findings in the migrated app (0.2.0) that are still open
+## Findings in the migrated app (1.0.0) that are still open
 
 ### LOW
 
