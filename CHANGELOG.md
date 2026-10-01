@@ -19,6 +19,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Dashboards that a push analysis uses (up to DHIS2 2.42) are marked and cannot be selected or deleted,
+  since the server refuses to delete them. If a delete still fails for that reason, the message says so
+  instead of showing the database error.
 - "Last viewed (days ago)" column for the "not viewed in one year" check, showing "Never" for
   dashboards that were never opened.
 - "Run check again" button and the time the shown results were computed.

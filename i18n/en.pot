@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2026-10-01T07:59:42.536Z\n"
-"PO-Revision-Date: 2026-10-01T07:59:42.537Z\n"
+"POT-Creation-Date: 2026-10-01T08:13:53.378Z\n"
+"PO-Revision-Date: 2026-10-01T08:13:53.379Z\n"
 
 msgid "Public (can edit)"
 msgstr "Public (can edit)"
@@ -28,6 +28,9 @@ msgstr "Select {{name}}"
 
 msgid "Dashboard"
 msgstr "Dashboard"
+
+msgid "Used by push analysis {{names}}. Delete the push analysis first."
+msgstr "Used by push analysis {{names}}. Delete the push analysis first."
 
 msgid "Created (days ago)"
 msgstr "Created (days ago)"
@@ -128,6 +131,9 @@ msgstr "Could not load dashboards"
 msgid "The integrity check failed"
 msgstr "The integrity check failed"
 
+msgid "Could not load push analyses"
+msgstr "Could not load push analyses"
+
 msgid "Running integrity check…"
 msgstr "Running integrity check…"
 
@@ -164,6 +170,9 @@ msgstr "Run check again"
 
 msgid "Checked at {{time}}"
 msgstr "Checked at {{time}}"
+
+msgid "used by a push analysis; delete the push analysis first"
+msgstr "used by a push analysis; delete the push analysis first"
 
 msgid "Timed out waiting for the integrity check to finish"
 msgstr "Timed out waiting for the integrity check to finish"

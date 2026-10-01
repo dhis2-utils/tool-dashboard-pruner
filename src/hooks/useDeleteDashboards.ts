@@ -1,7 +1,17 @@
 import { useDataEngine } from '@dhis2/app-runtime'
+import i18n from '@dhis2/d2-i18n'
 import { useMutation } from '@tanstack/react-query'
 
 const MAX_CONCURRENT_DELETES = 5
+
+// Up to 2.42 the server answers with the raw constraint violation when a
+// push analysis still uses the dashboard
+const describeError = (error: unknown) => {
+    const message = (error as Error)?.message ?? String(error)
+    return /pushanalysis/i.test(message)
+        ? i18n.t('used by a push analysis; delete the push analysis first')
+        : message
+}
 
 export type DeleteFailure = { id: string; message: string }
 export type DeleteResult = { deleted: string[]; failed: DeleteFailure[] }
@@ -33,7 +43,7 @@ export const useDeleteDashboards = ({
                 } catch (error) {
                     result.failed.push({
                         id,
-                        message: (error as Error)?.message ?? String(error),
+                        message: describeError(error),
                     })
                 }
                 onProgress?.(result.deleted.length + result.failed.length)

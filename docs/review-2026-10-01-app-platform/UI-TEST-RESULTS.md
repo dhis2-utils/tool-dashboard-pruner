@@ -18,29 +18,30 @@ access, and one is public with view access. The seed also creates the users `pru
 | 2.42 SL  | 2.42.6        | `dhis2-db-sierra-leone_v42.sql.gz` |
 | 2.43 Lao | 2.43.1        | `lao_hmis_demo_v43.sql.gz`         |
 
-All were disposable test instances, created for this review and removed afterwards (2.42 was kept for manual testing).
+All were disposable test instances, created for this review and removed afterwards.
 
 ## Results
 
-Each version ran the suite on the final build or the build just before it (see note below the table). The suite has 9 flows and exits with a failure
+Each version ran the suite on the final build or an earlier one (see the note below the table). The suite has 10 flows and exits with a failure
 on any unexpected console, page or HTTP error.
 
-| Flow                          | 2.40 SL   | 2.41 Lao   | 2.42 SL   | 2.43 Lao   | What is asserted                                                                                       |
-| ----------------------------- | --------- | ---------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------ |
-| Install over legacy 0.1.9     | —         | —          | PASS      | —          | The same app key upgrades it in place, giving one app at version 0.2.0                                 |
-| Default check (no items)      | PASS (6)  | PASS (7)   | PASS (6)  | PASS (7)   | The table total equals a fresh server-side run of `dashboards_no_items`                                |
-| Not viewed in one year        | PASS (33) | PASS (174) | PASS (33) | PASS (174) | The total equals the API result. Lao spans 4 pages. On ≤2.41 most rows come from by-id lookups         |
-| Search + public-access labels | PASS      | PASS       | PASS      | PASS       | Search narrows the table to the 4 private rows. A view-only public dashboard shows "Public (can view)" |
-| Open link                     | PASS      | PASS       | PASS      | PASS       | Returns 200. On 2.43 it lands on `/apps/dashboard#/<id>`                                               |
-| Single delete                 | PASS*     | PASS*      | PASS      | PASS       | The API returns 404, the row stays gone after the rerun, and **the search is kept**                    |
-| Bulk delete                   | PASS      | PASS       | PASS      | PASS       | Select-all picks only the filtered rows, and a selection hidden by a search change is cleared          |
-| Delete, then switch check     | PASS      | PASS       | PASS      | PASS       | The other check's cached result does not show the deleted dashboard                                    |
-| Non-superuser                 | PASS      | PASS       | PASS      | PASS       | Only the 1 dashboard the user can delete is listed                                                     |
-| No `F_PERFORM_MAINTENANCE`    | PASS      | PASS       | PASS      | PASS       | A warning is shown and no `POST dataIntegrity` is sent                                                 |
+| Flow                          | 2.40 SL   | 2.41 Lao   | 2.42 SL   | 2.43 Lao              | What is asserted                                                                                       |
+| ----------------------------- | --------- | ---------- | --------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Install over legacy 0.1.9     | —         | —          | PASS      | —                     | The same app key upgrades it in place, giving one app at version 0.2.0                                 |
+| Default check (no items)      | PASS (6)  | PASS (7)   | PASS (6)  | PASS (7)              | The table total equals a fresh server-side run of `dashboards_no_items`                                |
+| Not viewed in one year        | PASS (33) | PASS (174) | PASS (33) | PASS (174)            | The total equals the API result. Lao spans 4 pages. On ≤2.41 most rows come from by-id lookups         |
+| Search + public-access labels | PASS      | PASS       | PASS      | PASS                  | Search narrows the table to the 4 private rows. A view-only public dashboard shows "Public (can view)" |
+| Open link                     | PASS      | PASS       | PASS      | PASS                  | Returns 200. On 2.43 it lands on `/apps/dashboard#/<id>`                                               |
+| Single delete                 | PASS*     | PASS*      | PASS      | PASS                  | The API returns 404, the row stays gone after the rerun, and **the search is kept**                    |
+| Bulk delete                   | PASS      | PASS       | PASS      | PASS                  | Select-all picks only the filtered rows, and a selection hidden by a search change is cleared          |
+| Delete, then switch check     | PASS      | PASS       | PASS      | PASS                  | The other check's cached result does not show the deleted dashboard                                    |
+| Push analysis blocks delete   | PASS      | PASS       | PASS      | n/a (removed in 2.43) | Row shows the push analysis name, and its checkbox and Delete button are disabled                      |
+| Non-superuser                 | PASS      | PASS       | PASS      | PASS                  | Only the 1 dashboard the user can delete is listed                                                     |
+| No `F_PERFORM_MAINTENANCE`    | PASS      | PASS       | PASS      | PASS                  | A warning is shown and no `POST dataIntegrity` is sent                                                 |
 
-2.40 and 2.41 ran the final build. 2.42 and 2.43 ran the build just before the last fix (#19 in FIXES.md).
-That fix only changes behaviour when dashboards are looked up by id, which never happens on 2.42+. The
-final build is installed on the 2.42 instance for manual testing.
+2.40, 2.41 and 2.42 ran the final build (10 flows each). 2.43 ran an earlier build, from before fixes #19
+and #20 in FIXES.md. Neither fix changes behaviour on 2.43: no dashboards are looked up by id there, and the
+push-analysis query is turned off because the feature no longer exists.
 
 ### Permission behaviour (API probes)
 

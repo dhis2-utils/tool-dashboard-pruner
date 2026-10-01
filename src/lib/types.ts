@@ -33,4 +33,7 @@ export type DashboardRow = {
     // null when never viewed; undefined when the check doesn't report views
     lastViewedDaysAgo?: number | null
     publicAccess: PublicAccess | null
+    // Names of push analyses using the dashboard; the server refuses to
+    // delete it while any exist
+    pushAnalyses: string[]
 }

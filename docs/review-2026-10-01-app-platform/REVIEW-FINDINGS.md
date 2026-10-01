@@ -99,6 +99,21 @@ with "Never" for dashboards that were never viewed.
   "deleted". This is gated by `FEATURES.superuserListsBypassSharing` (`src/utils/support.ts`), so 2.42+
   makes no extra requests. The cost on the Lao 2.41 database is about 170 small GETs per check.
 
+#### M4. Deleting a dashboard used by a push analysis fails with a database error (up to 2.42)
+
+- **Where**: `src/hooks/usePushAnalyses.ts`, `src/components/DashboardTable.tsx`
+- **What**: found in manual testing on 2.42. A bulk delete reported "22 deleted and 1 failed". The failure
+  message was the raw SQL error: `violates foreign key constraint … on table "pushanalysis"`. Push analysis
+  is the only table that references `dashboard` without cascading (`dashboard_items` rows are deleted with
+  the dashboard). The feature, and its table, was removed in 2.43 (`V2_43_38__Remove_push_analysis_feature.sql`).
+- **Fix**: done.
+    - On ≤2.42 the app loads `/api/pushAnalysis`. A dashboard one uses shows "Used by push analysis …
+      Delete the push analysis first.", and its checkbox and Delete button are disabled. Select-all skips it.
+    - Unlike dashboards, push analyses have no sharing. The superuser got the complete list on 2.40 (2 of 2)
+      and on 2.41 (1 of 1). A push analysis created after the list was loaded can still block a delete; the
+      failure then reads "used by a push analysis; delete the push analysis first".
+    - This is gated by `FEATURES.pushAnalysisRemoved`.
+
 ## Findings in the migrated app (0.2.0) that are still open
 
 ### LOW

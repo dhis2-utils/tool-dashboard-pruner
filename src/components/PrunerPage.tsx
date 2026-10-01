@@ -15,6 +15,10 @@ import { DASHBOARDS_QUERY_KEY, useDashboards } from '@/hooks/useDashboards'
 import { useIntegrityCheck } from '@/hooks/useIntegrityCheck'
 import { useMe } from '@/hooks/useMe'
 import {
+    PUSH_ANALYSES_QUERY_KEY,
+    usePushAnalyses,
+} from '@/hooks/usePushAnalyses'
+import {
     CHECK_NO_ITEMS,
     CHECK_NOT_VIEWED,
     getChecks,
@@ -72,22 +76,27 @@ export const PrunerPage = () => {
         resultKey: check,
     })
 
+    const { pushAnalysesByDashboard, error: pushAnalysesError } =
+        usePushAnalyses()
+
     const rows = useMemo(
         () =>
             details && dashboards
                 ? buildDashboardRows({
                       issues: details.issues,
                       dashboards,
+                      pushAnalysesByDashboard,
                       isSuperuser: me.isSuperuser,
                       reportsLastViewed: check === CHECK_NOT_VIEWED,
                   })
                 : [],
-        [details, dashboards, me.isSuperuser, check]
+        [details, dashboards, pushAnalysesByDashboard, me.isSuperuser, check]
     )
 
     const runAgain = () => {
         // Pick up dashboards created or changed since the list was loaded
         queryClient.invalidateQueries({ queryKey: DASHBOARDS_QUERY_KEY })
+        queryClient.invalidateQueries({ queryKey: PUSH_ANALYSES_QUERY_KEY })
         rerun()
     }
 
@@ -128,7 +137,15 @@ export const PrunerPage = () => {
                 error={checkError}
             />
         )
-        if (!details || !dashboards) {
+        if (pushAnalysesError && !pushAnalysesByDashboard) {
+            return (
+                <ErrorNotice
+                    title={i18n.t('Could not load push analyses')}
+                    error={pushAnalysesError}
+                />
+            )
+        }
+        if (!details || !dashboards || !pushAnalysesByDashboard) {
             return (
                 failedRun || (
                     <Loading label={i18n.t('Running integrity check…')} />

@@ -73,6 +73,19 @@ describe('buildDashboardRows', () => {
         expect(rows[1].lastViewedDaysAgo).toBeNull()
     })
 
+    it('lists the push analyses using a dashboard', () => {
+        const rows = buildDashboardRows({
+            issues,
+            dashboards,
+            pushAnalysesByDashboard: new Map([['a', ['Monthly report']]]),
+            isSuperuser: true,
+            reportsLastViewed: false,
+            now,
+        })
+        expect(rows[0].pushAnalyses).toEqual(['Monthly report'])
+        expect(rows[1].pushAnalyses).toEqual([])
+    })
+
     it('only lists deletable dashboards for other users', () => {
         const rows = buildDashboardRows({
             issues,

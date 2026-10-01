@@ -26,7 +26,31 @@ DASHBOARDS = {
     "private-4": (VIEWER, "--------", None),
     "shared-edit": (None, "--------", "rw------"),
     "public-view": (None, "r-------", None),
+    # Up to 2.42 this one also gets a push analysis, which blocks deleting it
+    "push": (None, "--------", None),
 }
+PUSH_ANALYSIS_NAME = f"{PREFIX} push analysis"
+# Push analysis was removed in 2.43
+PUSH_ANALYSIS_REMOVED_IN = 43
+
+
+def has_push_analysis():
+    _, info = api.get("system/info?fields=version")
+    minor = int(info["version"].split(".")[1].split("-")[0])
+    return minor < PUSH_ANALYSIS_REMOVED_IN
+
+
+def remove_old_push_analyses():
+    _, body = api.get(f"pushAnalysis?fields=id&paging=false&filter=name:like:{PREFIX}")
+    for push in body["pushAnalysis"]:
+        api.delete(f"pushAnalysis/{push['id']}")
+
+
+def create_push_analysis(dashboard_uid):
+    payload = {"name": PUSH_ANALYSIS_NAME, "title": PUSH_ANALYSIS_NAME,
+               "dashboard": {"id": dashboard_uid}, "recipientUserGroups": []}
+    status, body = api.post("pushAnalysis", payload)
+    assert status in (200, 201), body
 
 
 def remove_old_dashboards():
@@ -94,6 +118,9 @@ def superuser_access(uid):
 
 
 def main():
+    push_supported = has_push_analysis()
+    if push_supported:
+        remove_old_push_analyses()
     remove_old_dashboards()
     _, roots = api.get("organisationUnits?fields=id&filter=level:eq:1")
     root_ou = roots["organisationUnits"][0]["id"]
@@ -108,6 +135,8 @@ def main():
         suffix: create_dashboard(suffix, owner, public, access, tester_id)
         for suffix, (owner, public, access) in DASHBOARDS.items()
     }
+    if push_supported:
+        create_push_analysis(dashboards["push"])
 
     # Expectations come from what the server actually reports after seeding
     _, read_back = api.get(
@@ -128,6 +157,7 @@ def main():
         ),
         "all_seeded_flagged_empty": all(uid in empty_ids for uid in dashboards.values()),
         "empty_check_total": len(empty_ids),
+        "push_analysis": push_supported,
         "superuser_on_foreign_private": superuser_access(dashboards["private-1"]),
         "users": {"tester": TESTER, "viewer": VIEWER, "password": TEST_PASSWORD},
     }

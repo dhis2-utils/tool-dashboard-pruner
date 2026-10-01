@@ -38,3 +38,9 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+
+.blocked {
+    margin-block-start: var(--spacers-dp4);
+    color: var(--colors-yellow800);
+    font-size: 13px;
+}

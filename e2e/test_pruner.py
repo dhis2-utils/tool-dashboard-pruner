@@ -44,6 +44,7 @@ SEL_MODAL = "[data-test='delete-modal']"
 SEL_HEADERS = f"{SEL_TABLE} thead th"
 SEL_REFRESHING = "[role='status']"
 SEL_SELECT_ROW = "[data-test='select-row'] input"
+SEL_PUSH_NOTE = "[data-test='push-analysis-note']"
 SEARCH_PRIVATE = "PRUNER-TEST private"
 CHECK_TIMEOUT_MS = int(os.environ.get("CHECK_TIMEOUT_MS", "180000"))
 # Platform noise that is not caused by the app (see UI-TEST-RESULTS.md)
@@ -298,6 +299,27 @@ def flow_delete_then_switch_check(s):
     return "deleted under one check; not listed when switching to the other"
 
 
+def flow_push_analysis_blocks_delete(s):
+    s.goto_check(CHECK_NO_ITEMS)
+    s.search("PRUNER-TEST push")
+    row = s.root.locator(SEL_ROW).first
+    note = row.locator(SEL_PUSH_NOTE)
+    if not STATE["push_analysis"]:
+        has_note = note.count() > 0
+        s.search("")
+        assert not has_note, "push-analysis note shown on a version without push analysis"
+        return "no push analysis on this version: row is deletable"
+    text = note.inner_text()
+    checkbox_disabled = row.locator(SEL_SELECT_ROW).is_disabled()
+    delete_disabled = row.locator(SEL_DELETE_ROW).is_disabled()
+    s.shot("08-push-analysis-blocked")
+    s.search("")
+    assert "PRUNER-TEST push analysis" in text, text
+    assert checkbox_disabled and delete_disabled, "blocked row can still be deleted"
+    assert api.dashboard_exists(SEEDED["push"])
+    return f"note '{text.strip()}'; checkbox and delete disabled"
+
+
 def flow_non_superuser(s):
     s.wait_for_results()
     notice = s.root.get_by_text("Limited to dashboards you can delete").count()
@@ -325,6 +347,7 @@ SUPERUSER_FLOWS = [
     flow_single_delete,
     flow_bulk_delete,
     flow_delete_then_switch_check,
+    flow_push_analysis_blocks_delete,
 ]
 
 

@@ -42,6 +42,7 @@ export const parsePublicAccess = (
 type BuildRowsOptions = {
     issues: IntegrityIssue[]
     dashboards: DashboardProperties[]
+    pushAnalysesByDashboard?: Map<string, string[]>
     isSuperuser: boolean
     reportsLastViewed: boolean
     now?: Date
@@ -59,6 +60,7 @@ type BuildRowsOptions = {
 export const buildDashboardRows = ({
     issues,
     dashboards,
+    pushAnalysesByDashboard,
     isSuperuser,
     reportsLastViewed,
     now = new Date(),
@@ -80,6 +82,7 @@ export const buildDashboardRows = ({
                     lastViewedDaysAgo: daysSince(issue.comment, now),
                 }),
                 publicAccess: parsePublicAccess(dashboard.sharing?.public),
+                pushAnalyses: pushAnalysesByDashboard?.get(issue.id) ?? [],
             },
         ]
     })

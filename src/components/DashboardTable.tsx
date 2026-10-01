@@ -130,7 +130,10 @@ export const DashboardTable = ({
             columnHelper.display({
                 id: 'select',
                 header: ({ table }) => {
-                    const filtered = table.getFilteredRowModel().rows
+                    // Rows blocked by a push analysis cannot be selected
+                    const filtered = table
+                        .getFilteredRowModel()
+                        .rows.filter((r) => r.getCanSelect())
                     const selectedCount = filtered.filter((r) =>
                         r.getIsSelected()
                     ).length
@@ -138,7 +141,7 @@ export const DashboardTable = ({
                         <Checkbox
                             dense
                             dataTest="select-all"
-                            disabled={isRefreshing}
+                            disabled={isRefreshing || filtered.length === 0}
                             label={
                                 <span className={styles.srOnly}>
                                     {i18n.t(
@@ -170,7 +173,7 @@ export const DashboardTable = ({
                     <Checkbox
                         dense
                         dataTest="select-row"
-                        disabled={isRefreshing}
+                        disabled={isRefreshing || !row.getCanSelect()}
                         label={
                             <span className={styles.srOnly}>
                                 {i18n.t('Select {{name}}', {
@@ -184,7 +187,30 @@ export const DashboardTable = ({
                     />
                 ),
             }),
-            columnHelper.accessor('name', { header: i18n.t('Dashboard') }),
+            columnHelper.accessor('name', {
+                header: i18n.t('Dashboard'),
+                cell: ({ row }) => (
+                    <>
+                        {row.original.name}
+                        {row.original.pushAnalyses.length > 0 && (
+                            <div
+                                className={styles.blocked}
+                                data-test="push-analysis-note"
+                            >
+                                {i18n.t(
+                                    'Used by push analysis {{names}}. Delete the push analysis first.',
+                                    {
+                                        names: row.original.pushAnalyses.join(
+                                            ', '
+                                        ),
+                                        interpolation: { escapeValue: false },
+                                    }
+                                )}
+                            </div>
+                        )}
+                    </>
+                ),
+            }),
             columnHelper.accessor('createdDaysAgo', {
                 header: i18n.t('Created (days ago)'),
                 cell: (info) => daysCell(info.getValue(), i18n.t('Unknown')),
@@ -236,7 +262,10 @@ export const DashboardTable = ({
                             small
                             secondary
                             dataTest="delete-row"
-                            disabled={isRefreshing}
+                            disabled={
+                                isRefreshing ||
+                                row.original.pushAnalyses.length > 0
+                            }
                             aria-label={i18n.t('Delete {{name}}', {
                                 name: row.original.name,
                                 interpolation: { escapeValue: false },
@@ -257,7 +286,7 @@ export const DashboardTable = ({
         state: { sorting, globalFilter, rowSelection },
         initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
         getRowId: (row) => row.id,
-        enableRowSelection: true,
+        enableRowSelection: (row) => row.original.pushAnalyses.length === 0,
         onSortingChange: setSorting,
         onGlobalFilterChange: (updater) =>
             setGlobalFilter(
