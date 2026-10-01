@@ -1,0 +1,44 @@
+.page {
+    max-inline-size: 1200px;
+    margin: 0 auto;
+    padding: var(--spacers-dp24) var(--spacers-dp16);
+}
+
+.title {
+    margin: 0 0 var(--spacers-dp16);
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--colors-grey900);
+}
+
+.notice {
+    margin-block-end: var(--spacers-dp16);
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--spacers-dp16);
+    margin-block-end: var(--spacers-dp16);
+}
+
+.checkSelect {
+    min-inline-size: 320px;
+}
+
+.runInfo {
+    color: var(--colors-grey700);
+    font-size: 14px;
+    padding-block-end: var(--spacers-dp8);
+}
+
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacers-dp12);
+    min-block-size: 300px;
+    color: var(--colors-grey700);
+}

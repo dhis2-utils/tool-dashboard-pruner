@@ -1,0 +1,191 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: i18next-conv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"POT-Creation-Date: 2026-10-01T07:59:42.536Z\n"
+"PO-Revision-Date: 2026-10-01T07:59:42.537Z\n"
+
+msgid "Public (can edit)"
+msgstr "Public (can edit)"
+
+msgid "Public (can view)"
+msgstr "Public (can view)"
+
+msgid "Not public"
+msgstr "Not public"
+
+msgid "Unknown"
+msgstr "Unknown"
+
+msgid "Select all dashboards matching the search"
+msgstr "Select all dashboards matching the search"
+
+msgid "Select {{name}}"
+msgstr "Select {{name}}"
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Created (days ago)"
+msgstr "Created (days ago)"
+
+msgid "Last updated (days ago)"
+msgstr "Last updated (days ago)"
+
+msgid "Last viewed (days ago)"
+msgstr "Last viewed (days ago)"
+
+msgid "Never"
+msgstr "Never"
+
+msgid "Public access"
+msgstr "Public access"
+
+msgid "Actions"
+msgstr "Actions"
+
+msgid "Open {{name}} in the Dashboard app"
+msgstr "Open {{name}} in the Dashboard app"
+
+msgid "Open"
+msgstr "Open"
+
+msgid "Delete {{name}}"
+msgstr "Delete {{name}}"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "1 dashboard deleted"
+msgstr "1 dashboard deleted"
+
+msgid "{{n}} dashboards deleted"
+msgstr "{{n}} dashboards deleted"
+
+msgid "{{deleted}} deleted and {{failed}} failed, still selected ({{errors}})"
+msgstr "{{deleted}} deleted and {{failed}} failed, still selected ({{errors}})"
+
+msgid "Search by name"
+msgstr "Search by name"
+
+msgid "Search dashboards by name"
+msgstr "Search dashboards by name"
+
+msgid "Updating results…"
+msgstr "Updating results…"
+
+msgid "Delete selected"
+msgstr "Delete selected"
+
+msgid "Delete selected ({{n}})"
+msgstr "Delete selected ({{n}})"
+
+msgid "Sort"
+msgstr "Sort"
+
+msgid "No dashboards found by this check"
+msgstr "No dashboards found by this check"
+
+msgid "No dashboards match the search"
+msgstr "No dashboards match the search"
+
+msgid "Delete 1 dashboard?"
+msgstr "Delete 1 dashboard?"
+
+msgid "Delete {{n}} dashboards?"
+msgstr "Delete {{n}} dashboards?"
+
+msgid "This cannot be undone."
+msgstr "This cannot be undone."
+
+msgid "…and {{n}} more"
+msgstr "…and {{n}} more"
+
+msgid "Deleted {{done}} of {{total}}…"
+msgstr "Deleted {{done}} of {{total}}…"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "An unknown error occurred"
+msgstr "An unknown error occurred"
+
+msgid "Loading user…"
+msgstr "Loading user…"
+
+msgid "Could not load the current user"
+msgstr "Could not load the current user"
+
+msgid "Missing authority"
+msgstr "Missing authority"
+
+msgid "Could not load dashboards"
+msgstr "Could not load dashboards"
+
+msgid "The integrity check failed"
+msgstr "The integrity check failed"
+
+msgid "Running integrity check…"
+msgstr "Running integrity check…"
+
+msgid "Dashboard pruner"
+msgstr "Dashboard pruner"
+
+msgid "Deleting dashboards cannot be undone"
+msgstr "Deleting dashboards cannot be undone"
+
+msgid ""
+"Deleting a dashboard removes the dashboard and its layout. The "
+"visualizations, maps and other content it showed are kept. Test in a "
+"development environment first."
+msgstr ""
+"Deleting a dashboard removes the dashboard and its layout. The "
+"visualizations, maps and other content it showed are kept. Test in a "
+"development environment first."
+
+msgid "Limited to dashboards you can delete"
+msgstr "Limited to dashboards you can delete"
+
+msgid ""
+"You are not a superuser, so only dashboards that are shared with you with "
+"edit access are listed."
+msgstr ""
+"You are not a superuser, so only dashboards that are shared with you with "
+"edit access are listed."
+
+msgid "Integrity check"
+msgstr "Integrity check"
+
+msgid "Run check again"
+msgstr "Run check again"
+
+msgid "Checked at {{time}}"
+msgstr "Checked at {{time}}"
+
+msgid "Timed out waiting for the integrity check to finish"
+msgstr "Timed out waiting for the integrity check to finish"
+
+msgid "Dashboards with no items"
+msgstr "Dashboards with no items"
+
+msgid "Dashboards not viewed in one year"
+msgstr "Dashboards not viewed in one year"
+
+msgctxt "MAINTENANCE)."
+msgid ""
+"Running data integrity checks requires the \"Perform maintenance tasks\" "
+"authority (F_PERFORM"
+msgstr ""
+"Running data integrity checks requires the \"Perform maintenance tasks\" "
+"authority (F_PERFORM_MAINTENANCE)."
+
+msgctxt "Application title"
+msgid "__MANIFEST_APP_TITLE"
+msgstr "Dashboard Pruner Tool"
+
+msgctxt "Application description"
+msgid "__MANIFEST_APP_DESCRIPTION"
+msgstr "Tool to help you remove unused or empty dashboards from your DHIS2 instance"

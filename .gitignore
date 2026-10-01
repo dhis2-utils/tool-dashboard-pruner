@@ -1,8 +1,14 @@
-.tmp
-compiled
-build
-manifest.webapp
+# DHIS2 Platform
 node_modules
+.d2
+src/locales
+build
+
+.DS_Store
 .vscode
-bin
-d2auth.json
+
+# e2e suite output
+__pycache__/
+e2e/results/
+e2e/seed-state.json
+.pnpm-store
