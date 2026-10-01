@@ -21,7 +21,7 @@ with the test user with edit access, one public with view access), the users `pr
 ## 2. Run the suite
 
 Against the app installed on the instance (install `build/bundle/*.zip` first, e.g.
-`curl -u admin:district -F file=@build/bundle/Dashboard-Pruner-Tool-0.2.0.zip $DHIS2_URL/api/apps`):
+`curl -u admin:district -F file=@build/bundle/Dashboard-Pruner-Tool-1.0.0.zip $DHIS2_URL/api/apps`):
 
 ```
 DHIS2_URL=http://my-test-instance:8080 python3 e2e/test_pruner.py
