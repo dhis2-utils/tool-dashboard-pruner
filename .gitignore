@@ -10,5 +10,3 @@ build
 # e2e suite output
 __pycache__/
 e2e/results/
-e2e/seed-state.json
-.pnpm-store

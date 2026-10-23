@@ -1,12 +1,12 @@
 /** @type {import('@dhis2/cli-app-scripts').D2Config} */
 const config = {
     type: 'app',
-    // Matches the key of the pre-App Platform releases (0.1.x), so installing
-    // this version upgrades the existing app instead of adding a second one
-    name: 'Dashboard-Pruner-Tool',
+    // The app key: the repo name. Never change it again: user roles grant
+    // access to the app through an authority named after it.
+    name: 'tool-dashboard-pruner',
     title: 'Dashboard Pruner Tool',
     description:
-        'Tool to help you remove unused or empty dashboards from your DHIS2 instance',
+        'Find dashboards that are empty or not viewed in a year, and delete them',
     author: {
         name: 'HISP Centre, University of Oslo',
         email: 'dev@dhis2.org',
