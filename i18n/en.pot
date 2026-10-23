@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2026-10-01T08:13:53.378Z\n"
-"PO-Revision-Date: 2026-10-01T08:13:53.379Z\n"
+"POT-Creation-Date: 2026-10-23T07:46:42.058Z\n"
+"PO-Revision-Date: 2026-10-23T07:46:42.058Z\n"
 
 msgid "Public (can edit)"
 msgstr "Public (can edit)"
@@ -26,11 +26,23 @@ msgstr "Select all dashboards matching the search"
 msgid "Select {{name}}"
 msgstr "Select {{name}}"
 
-msgid "Dashboard"
-msgstr "Dashboard"
-
 msgid "Used by push analysis {{names}}. Delete the push analysis first."
 msgstr "Used by push analysis {{names}}. Delete the push analysis first."
+
+msgid "Open {{name}} in the Dashboard app"
+msgstr "Open {{name}} in the Dashboard app"
+
+msgid "Open"
+msgstr "Open"
+
+msgid "Delete {{name}}"
+msgstr "Delete {{name}}"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Dashboard"
+msgstr "Dashboard"
 
 msgid "Created (days ago)"
 msgstr "Created (days ago)"
@@ -49,18 +61,6 @@ msgstr "Public access"
 
 msgid "Actions"
 msgstr "Actions"
-
-msgid "Open {{name}} in the Dashboard app"
-msgstr "Open {{name}} in the Dashboard app"
-
-msgid "Open"
-msgstr "Open"
-
-msgid "Delete {{name}}"
-msgstr "Delete {{name}}"
-
-msgid "Delete"
-msgstr "Delete"
 
 msgid "1 dashboard deleted"
 msgstr "1 dashboard deleted"
@@ -125,6 +125,13 @@ msgstr "Could not load the current user"
 msgid "Missing authority"
 msgstr "Missing authority"
 
+msgid ""
+"Running data integrity checks requires the \"Perform maintenance tasks\" "
+"authority ({{authority}})."
+msgstr ""
+"Running data integrity checks requires the \"Perform maintenance tasks\" "
+"authority ({{authority}})."
+
 msgid "Could not load dashboards"
 msgstr "Could not load dashboards"
 
@@ -183,18 +190,10 @@ msgstr "Dashboards with no items"
 msgid "Dashboards not viewed in one year"
 msgstr "Dashboards not viewed in one year"
 
-msgctxt "MAINTENANCE)."
-msgid ""
-"Running data integrity checks requires the \"Perform maintenance tasks\" "
-"authority (F_PERFORM"
-msgstr ""
-"Running data integrity checks requires the \"Perform maintenance tasks\" "
-"authority (F_PERFORM_MAINTENANCE)."
-
 msgctxt "Application title"
 msgid "__MANIFEST_APP_TITLE"
 msgstr "Dashboard Pruner Tool"
 
 msgctxt "Application description"
 msgid "__MANIFEST_APP_DESCRIPTION"
-msgstr "Tool to help you remove unused or empty dashboards from your DHIS2 instance"
+msgstr "Find dashboards that are empty or not viewed in a year, and delete them"

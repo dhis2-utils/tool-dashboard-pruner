@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useRef } from 'react'
 import { useFeature } from '@/hooks/useFeature'
 import { forEachConcurrently } from '@/lib/concurrency'
+import { httpStatusOf } from '@/lib/httpStatus'
 import type { DashboardProperties } from '@/lib/types'
 import { FEATURES } from '@/utils/support'
 import { useApiDataQuery } from '@/utils/useApiDataQuery'
@@ -16,10 +17,6 @@ const FIELDS =
 const MAX_CONCURRENT_REQUESTS = 10
 
 export const DASHBOARDS_QUERY_KEY = ['dashboards']
-
-const isNotFound = (error: unknown) =>
-    (error as { details?: { httpStatusCode?: number } })?.details
-        ?.httpStatusCode === 404
 
 const useDashboardList = () =>
     useApiDataQuery<DashboardsResponse, Error, DashboardProperties[]>({
@@ -59,7 +56,7 @@ const useDashboardsById = (ids: string[]) => {
                         })
                         found.push(response.dashboard as DashboardProperties)
                     } catch (error) {
-                        if (!isNotFound(error)) {
+                        if (httpStatusOf(error) !== 404) {
                             throw error
                         }
                     }

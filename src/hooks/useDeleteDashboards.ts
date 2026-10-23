@@ -2,6 +2,7 @@ import { useDataEngine } from '@dhis2/app-runtime'
 import i18n from '@dhis2/d2-i18n'
 import { useMutation } from '@tanstack/react-query'
 import { forEachConcurrently } from '@/lib/concurrency'
+import { httpStatusOf } from '@/lib/httpStatus'
 
 const MAX_CONCURRENT_DELETES = 5
 
@@ -46,10 +47,16 @@ export const useDeleteDashboards = ({
                 })
                 result.deleted.push(id)
             } catch (error) {
-                result.failed.push({
-                    id,
-                    message: describeError(error),
-                })
+                // Someone else deleted it since the check ran: it is gone,
+                // which is what the user asked for
+                if (httpStatusOf(error) === 404) {
+                    result.deleted.push(id)
+                } else {
+                    result.failed.push({
+                        id,
+                        message: describeError(error),
+                    })
+                }
             }
             onProgress?.(result.deleted.length + result.failed.length)
         })

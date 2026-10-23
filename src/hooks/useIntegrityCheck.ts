@@ -2,6 +2,7 @@ import { useDataEngine } from '@dhis2/app-runtime'
 import i18n from '@dhis2/d2-i18n'
 import { useQuery } from '@tanstack/react-query'
 import type { CheckCode } from '@/lib/checks'
+import { httpStatusOf } from '@/lib/httpStatus'
 import type { IntegrityDetails } from '@/lib/types'
 
 type DataEngine = ReturnType<typeof useDataEngine>
@@ -25,10 +26,6 @@ const getCachedDetails = async (engine: DataEngine, code: CheckCode) => {
     })
     return (response.details as DetailsResponse)[code]
 }
-
-const isConflict = (error: unknown) =>
-    (error as { details?: { httpStatusCode?: number } })?.details
-        ?.httpStatusCode === 409
 
 /**
  * Run an integrity check and wait for a result produced by *this* run.
@@ -57,7 +54,7 @@ const runIntegrityCheck = async (
     } catch (error) {
         // 2.40 answers 409 when the check is already running. That run will
         // produce a fresh result, so just wait for it.
-        if (!isConflict(error)) {
+        if (httpStatusOf(error) !== 409) {
             throw error
         }
     }

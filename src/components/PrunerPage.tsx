@@ -116,7 +116,13 @@ export const PrunerPage = () => {
             return (
                 <NoticeBox warning title={i18n.t('Missing authority')}>
                     {i18n.t(
-                        'Running data integrity checks requires the "Perform maintenance tasks" authority (F_PERFORM_MAINTENANCE).'
+                        'Running data integrity checks requires the "Perform maintenance tasks" authority ({{authority}}).',
+                        {
+                            // Not in the key: the extractor cuts a key at
+                            // its last underscore
+                            authority: 'F_PERFORM_MAINTENANCE',
+                            interpolation: { escapeValue: false },
+                        }
                     )}
                 </NoticeBox>
             )

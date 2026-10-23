@@ -387,7 +387,10 @@ export const DashboardTable = ({
                     />
                 </div>
                 {isRefreshing && (
-                    <output className={styles.refreshing}>
+                    <output
+                        className={styles.refreshing}
+                        data-test="refreshing"
+                    >
                         <CircularLoader extrasmall />
                         {i18n.t('Updating results…')}
                     </output>
