@@ -1,83 +1,55 @@
-# DHIS2 Dashboard Pruner App
+# Dashboard Pruner Tool
 
 > ![Maturity: Experimental](https://img.shields.io/badge/maturity-Experimental-orange)  
-> Intended use: tool to prune dashboards that are empty or have not been actively viewed in the last year.
+> Intended use: find dashboards that are empty or not viewed in a year, and delete them.  
 > Maintainers: HISP Centre implementation team.
->
-> **WARNING**  
-> This tool is intended to be used by system administrators, not end users. It is available as a DHIS2 app, but has not been through the same rigorous testing as normal core apps. It should be used with care, and always tested in a development environment.
 
-## License
+> [!WARNING]
+> This tool is for system administrators. It deletes dashboards, and a delete cannot be undone. Try it on a copy of your database first.
 
-© Copyright University of Oslo 2004-2025. Licensed under BSD-3-Clause. See LICENSE for details.
+A DHIS2 app that runs the "dashboards with no items" and "dashboards not viewed in one year" data integrity checks, lists the dashboards they find, and deletes the ones you choose. How to install and use it is in the [user documentation](docs/user/tool-dashboard-pruner.md).
 
-## About the app
+## Supported DHIS2 versions
 
-The DHIS2 Dashboard Pruner App is a tool designed to help administrators manage and clean up
-their DHIS2 dashboards by removing unused or obsolete dashboard items. This helps in maintaining
-an organized and efficient dashboard environment, ensuring that only relevant and necessary items
-are retained.
+2.40 and later (`minDHIS2Version` in `d2.config.js`). The e2e suite runs on 2.40, 2.41, 2.42 and 2.43.
 
-You can choose to remove dashboards which are empty (i.e., contain no dashboard items) or
-dashboards which have not been **actively** viewed in over one year. When you delete a dashboard with this app,
-the dashboard and its layout are removed, but the visualizations, maps and other content it showed are kept.
+## Prerequisites
 
-The data statistics system of DHIS2 counts two different types of views of a dashboard:
+- Node.js 22 and [pnpm](https://pnpm.io) (the version is pinned in `package.json` under `packageManager`; `corepack enable` picks it up).
+- A DHIS2 instance to run against. For a local one, see [DHIS2 in Docker](https://developers.dhis2.org/docs/tutorials/dhis2-docker/).
 
-- Active views: when a user explicitly opens a dashboard in the DHIS2 dashboard app.
-- Passive views: when a dashboard is loaded when the user logins to DHIS2, e.g. the default landing page dashboard.
-
-The Dashboard Pruner App only considers active views when determining if a dashboard is stale.
-
-If you determine that one of the dashboards which is identified by the app should not be deleted, you can
-simply open the dashboard in the DHIS2 dashboard app (the **Open** link in each row) to update its last
-viewed timestamp. This should have the effect of removing it from the list of dashboards identified as
-stale by the integrity check used by the Dashboard Pruner App. Click **Run check again** to refresh the list.
-
-## Requirements
-
-- DHIS2 2.40 or newer (tested on 2.40, 2.41, 2.42 and 2.43).
-- The user needs the **Perform maintenance tasks** authority (`F_PERFORM_MAINTENANCE`) or to be a
-  superuser, since the app runs DHIS2's data integrity checks. Non-superusers also need the app's own
-  authority (`M_DashboardPrunerTool`, shown as "DashboardPrunerTool app" in the user role editor).
-- Superusers see every dashboard the check flags. Other users only see the flagged dashboards they are
-  allowed to delete.
-
-## Getting started
-
-This is a [DHIS2 App Platform](https://developers.dhis2.org/docs/app-platform/getting-started) app, built
-with [pnpm](https://pnpm.io).
-
-### Install dependencies
+## Install dependencies
 
 ```
 pnpm install
 ```
 
-### Start the development server
+## Start the app against a local instance
 
 ```
-pnpm start --proxy https://play.im.dhis2.org/dev-2-42
+pnpm start --proxy http://localhost:8080
 ```
 
-Open http://localhost:3000 and sign in with `http://localhost:8080` as the server (the proxy) and your
-DHIS2 credentials. Without `--proxy`, the dev server expects DHIS2 on http://localhost:8080; when
-connecting to another instance directly, add http://localhost:3000 to its CORS allowlist.
+Open http://localhost:3000 and log in with `http://localhost:8080` as the server and your DHIS2 credentials. The proxy forwards the API requests, so the instance needs no CORS setting.
 
-### Build
+## Test, lint and build
 
 ```
-pnpm build
+pnpm test        # unit tests (Jest, src/**/*.test.ts)
+pnpm run lint    # Ultracite: Oxlint and Oxfmt, over the DHIS2 house style
+pnpm run format  # rewrite files with Oxfmt
+pnpm exec tsc --noEmit
+pnpm run build   # build/bundle/tool-dashboard-pruner-<version>.zip
 ```
 
-This creates `build/bundle/Dashboard-Pruner-Tool-<version>.zip`, which can be installed through the
-DHIS2 App Management app. Installing it upgrades earlier (0.1.x) versions of the app in place.
+Linting follows [LINTING.md](https://github.com/dhis2-utils/reference-tool-conventions/blob/main/LINTING.md) in reference-tool-conventions. A Claude Code hook (`.claude/hooks/ultracite-fix.sh`) lints each file an agent edits; nothing else depends on it.
 
-### Lint and test
+The end-to-end suite installs the built app on a DHIS2 instance and drives it in a browser. It deletes data, so only run it against a throwaway instance: see [`e2e/README.md`](e2e/README.md).
 
-```
-pnpm lint
-pnpm test
-```
+## Release
 
-End-to-end tests against a live DHIS2 instance are in [`e2e/`](e2e/README.md).
+Releases follow [RELEASE-WORKFLOW.md](https://github.com/dhis2-utils/reference-tool-conventions/blob/main/RELEASE-WORKFLOW.md) in reference-tool-conventions: bump `version` in `package.json`, add a section to `CHANGELOG.md`, merge to `main`, then push a `vX.Y.Z` tag on the merged commit. The Release workflow builds the app and attaches the zip to a GitHub release.
+
+## License
+
+© Copyright University of Oslo 2004-2025. Licensed under BSD-3-Clause. See [LICENSE](LICENSE) for details.
