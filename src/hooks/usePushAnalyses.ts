@@ -2,13 +2,15 @@ import { useFeature } from '@/hooks/useFeature'
 import { FEATURES } from '@/utils/support'
 import { useApiDataQuery } from '@/utils/useApiDataQuery'
 
-type PushAnalysis = {
+interface PushAnalysis {
     id: string
     displayName: string
     dashboard?: { id: string }
 }
 
-type PushAnalysesResponse = { pushAnalysis: PushAnalysis[] }
+interface PushAnalysesResponse {
+    pushAnalysis: PushAnalysis[]
+}
 
 export type PushAnalysesByDashboard = Map<string, string[]>
 

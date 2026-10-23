@@ -1,8 +1,8 @@
 import { useDataEngine } from '@dhis2/app-runtime'
 import i18n from '@dhis2/d2-i18n'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCode } from '@/lib/checks'
-import { IntegrityDetails } from '@/lib/types'
+import type { CheckCode } from '@/lib/checks'
+import type { IntegrityDetails } from '@/lib/types'
 
 type DataEngine = ReturnType<typeof useDataEngine>
 type DetailsResponse = Record<string, IntegrityDetails | undefined>
@@ -14,7 +14,10 @@ const MAX_CONSECUTIVE_POLL_ERRORS = 3
 
 export const INTEGRITY_CHECK_QUERY_KEY = 'integrityCheck'
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const sleep = (ms: number) =>
+    new Promise((resolve) => {
+        setTimeout(resolve, ms)
+    })
 
 const getCachedDetails = async (engine: DataEngine, code: CheckCode) => {
     const response = await engine.query({
@@ -60,19 +63,20 @@ const runIntegrityCheck = async (
     }
 
     const giveUpAt = Date.now() + POLL_TIMEOUT_MS
+    // A function, because the signal changes outside this loop
+    const isAborted = () => signal?.aborted === true
     let pollErrors = 0
-    while (Date.now() < giveUpAt && !signal?.aborted) {
+    while (Date.now() < giveUpAt && !isAborted()) {
+        // oxlint-disable-next-line no-await-in-loop -- polling: each request waits for the previous one
         await sleep(POLL_INTERVAL_MS)
         let details: IntegrityDetails | undefined
         try {
+            // oxlint-disable-next-line no-await-in-loop -- polling: each request waits for the previous one
             details = await getCachedDetails(engine, code)
             pollErrors = 0
         } catch (error) {
             // Tolerate a transient failure; the run continues server-side
-            if (
-                ++pollErrors >= MAX_CONSECUTIVE_POLL_ERRORS ||
-                signal?.aborted
-            ) {
+            if (++pollErrors >= MAX_CONSECUTIVE_POLL_ERRORS || isAborted()) {
                 throw error
             }
             continue

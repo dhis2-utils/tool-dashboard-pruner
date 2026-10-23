@@ -3,7 +3,7 @@ import {
     daysSince,
     parsePublicAccess,
 } from './dashboardRows'
-import { DashboardProperties } from './types'
+import type { DashboardProperties } from './types'
 
 const now = new Date('2026-10-01T12:00:00')
 

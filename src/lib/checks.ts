@@ -5,7 +5,7 @@ export const CHECK_NOT_VIEWED = 'dashboards_not_viewed_one_year'
 
 export type CheckCode = typeof CHECK_NO_ITEMS | typeof CHECK_NOT_VIEWED
 
-const CHECK_CODES: CheckCode[] = [CHECK_NO_ITEMS, CHECK_NOT_VIEWED]
+const CHECK_CODES = new Set<string>([CHECK_NO_ITEMS, CHECK_NOT_VIEWED])
 
 // A function, not a constant: labels must be translated at render time,
 // after the app's locales have been loaded
@@ -18,4 +18,4 @@ export const getChecks = (): { code: CheckCode; label: string }[] => [
 ]
 
 export const isCheckCode = (value: string | null): value is CheckCode =>
-    CHECK_CODES.includes(value as CheckCode)
+    value !== null && CHECK_CODES.has(value)

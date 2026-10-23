@@ -1,6 +1,6 @@
 import { useApiDataQuery } from '@/utils/useApiDataQuery'
 
-type Me = {
+interface Me {
     id: string
     authorities: string[]
 }

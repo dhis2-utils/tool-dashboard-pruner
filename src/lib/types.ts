@@ -1,4 +1,4 @@
-export type IntegrityIssue = {
+export interface IntegrityIssue {
     id: string
     name: string
     // For dashboards_not_viewed_one_year: the last active view timestamp as
@@ -6,7 +6,7 @@ export type IntegrityIssue = {
     comment?: string | null
 }
 
-export type IntegrityDetails = {
+export interface IntegrityDetails {
     name: string
     startTime?: string
     finishedTime?: string
@@ -14,7 +14,7 @@ export type IntegrityDetails = {
     issues: IntegrityIssue[]
 }
 
-export type DashboardProperties = {
+export interface DashboardProperties {
     id: string
     displayName: string
     created: string
@@ -25,7 +25,7 @@ export type DashboardProperties = {
 
 export type PublicAccess = 'edit' | 'view' | 'none'
 
-export type DashboardRow = {
+export interface DashboardRow {
     id: string
     name: string
     createdDaysAgo: number | null

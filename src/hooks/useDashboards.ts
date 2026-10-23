@@ -2,11 +2,12 @@ import { useDataEngine } from '@dhis2/app-runtime'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useRef } from 'react'
 import { useFeature } from '@/hooks/useFeature'
-import { DashboardProperties } from '@/lib/types'
+import { forEachConcurrently } from '@/lib/concurrency'
+import type { DashboardProperties } from '@/lib/types'
 import { FEATURES } from '@/utils/support'
 import { useApiDataQuery } from '@/utils/useApiDataQuery'
 
-type DashboardsResponse = {
+interface DashboardsResponse {
     dashboards: DashboardProperties[]
 }
 
@@ -43,10 +44,11 @@ const useDashboardsById = (ids: string[]) => {
     return useQuery<DashboardProperties[], Error>({
         queryKey: [...DASHBOARDS_QUERY_KEY, 'byId', ids],
         queryFn: async () => {
-            const queue = [...ids]
             const found: DashboardProperties[] = []
-            const worker = async () => {
-                for (let id = queue.shift(); id; id = queue.shift()) {
+            await forEachConcurrently(
+                ids,
+                MAX_CONCURRENT_REQUESTS,
+                async (id) => {
                     try {
                         const response = await engine.query({
                             dashboard: {
@@ -62,12 +64,6 @@ const useDashboardsById = (ids: string[]) => {
                         }
                     }
                 }
-            }
-            await Promise.all(
-                Array.from(
-                    { length: Math.min(MAX_CONCURRENT_REQUESTS, ids.length) },
-                    worker
-                )
             )
             return found
         },
@@ -78,7 +74,7 @@ const useDashboardsById = (ids: string[]) => {
     })
 }
 
-type UseDashboardsOptions = {
+interface UseDashboardsOptions {
     // Dashboards the integrity check reported
     issueIds: string[] | undefined
     isSuperuser: boolean

@@ -1,2 +1,4 @@
 pnpm-lock.yaml
 .pnpm-store
+.agents
+skills-lock.json

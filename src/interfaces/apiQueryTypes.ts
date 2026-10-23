@@ -1,5 +1,6 @@
 export type PossiblyDynamic<Type, InputType> =
-    Type | ((input: InputType) => Type)
+    | Type
+    | ((input: InputType) => Type)
 export type QueryVariables = Record<string, unknown>
 
 type QueryParameterSingularValue = string | number | boolean
@@ -7,7 +8,8 @@ interface QueryParameterAliasedValue {
     [name: string]: QueryParameterSingularValue
 }
 type QueryParameterSingularOrAliasedValue =
-    QueryParameterSingularValue | QueryParameterAliasedValue
+    | QueryParameterSingularValue
+    | QueryParameterAliasedValue
 type QueryParameterMultipleValue = QueryParameterSingularOrAliasedValue[]
 export type QueryParameterValue =
     | QueryParameterSingularValue

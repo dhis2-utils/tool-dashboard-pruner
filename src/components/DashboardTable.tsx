@@ -15,10 +15,16 @@ import {
     Pagination,
 } from '@dhis2/ui'
 import { useQueryClient } from '@tanstack/react-query'
-import {
+import type {
+    CellContext,
     Column,
+    HeaderContext,
+    RowData,
     RowSelectionState,
     SortingState,
+    Table,
+} from '@tanstack/react-table'
+import {
     createColumnHelper,
     flexRender,
     getCoreRowModel,
@@ -31,10 +37,11 @@ import React, { useMemo, useState } from 'react'
 import styles from './DashboardTable.module.css'
 import { DeleteDashboardsModal } from '@/components/DeleteDashboardsModal'
 import { DASHBOARDS_QUERY_KEY } from '@/hooks/useDashboards'
-import { DeleteResult } from '@/hooks/useDeleteDashboards'
+import type { DeleteResult } from '@/hooks/useDeleteDashboards'
 import { INTEGRITY_CHECK_QUERY_KEY } from '@/hooks/useIntegrityCheck'
-import { CHECK_NOT_VIEWED, CheckCode } from '@/lib/checks'
-import { DashboardRow, PublicAccess } from '@/lib/types'
+import type { CheckCode } from '@/lib/checks'
+import { CHECK_NOT_VIEWED } from '@/lib/checks'
+import type { DashboardRow, PublicAccess } from '@/lib/types'
 
 const PAGE_SIZE = 50
 
@@ -69,7 +76,167 @@ const daysSortingFn = (
     return av === bv ? 0 : av < bv ? -1 : 1
 }
 
+// What the cells need from the component that renders the table
+declare module '@tanstack/react-table' {
+    interface TableMeta<TData extends RowData> {
+        isRefreshing: boolean
+        dashboardUrl: (id: string) => string
+        requestDelete: (ids: string[]) => void
+    }
+}
+
+const getMeta = (table: Table<DashboardRow>) => {
+    const { meta } = table.options
+    if (!meta) {
+        throw new Error('DashboardTable: table meta is missing')
+    }
+    return meta
+}
+
+const SelectAllHeader = ({ table }: HeaderContext<DashboardRow, unknown>) => {
+    const { isRefreshing } = getMeta(table)
+    // Rows blocked by a push analysis cannot be selected
+    const filtered = table
+        .getFilteredRowModel()
+        .rows.filter((r) => r.getCanSelect())
+    const selectedCount = filtered.filter((r) => r.getIsSelected()).length
+    return (
+        <Checkbox
+            dense
+            dataTest="select-all"
+            disabled={isRefreshing || filtered.length === 0}
+            label={
+                <span className={styles.srOnly}>
+                    {i18n.t('Select all dashboards matching the search')}
+                </span>
+            }
+            checked={filtered.length > 0 && selectedCount === filtered.length}
+            indeterminate={selectedCount > 0 && selectedCount < filtered.length}
+            onChange={({ checked }) =>
+                table.setRowSelection(
+                    checked
+                        ? Object.fromEntries(filtered.map((r) => [r.id, true]))
+                        : {}
+                )
+            }
+        />
+    )
+}
+
+const SelectRowCell = ({ row, table }: CellContext<DashboardRow, unknown>) => (
+    <Checkbox
+        dense
+        dataTest="select-row"
+        disabled={getMeta(table).isRefreshing || !row.getCanSelect()}
+        label={
+            <span className={styles.srOnly}>
+                {i18n.t('Select {{name}}', {
+                    name: row.original.name,
+                    interpolation: { escapeValue: false },
+                })}
+            </span>
+        }
+        checked={row.getIsSelected()}
+        onChange={({ checked }) => row.toggleSelected(checked)}
+    />
+)
+
+const NameCell = ({ row }: CellContext<DashboardRow, string>) => (
+    <>
+        {row.original.name}
+        {row.original.pushAnalyses.length > 0 && (
+            <div className={styles.blocked} data-test="push-analysis-note">
+                {i18n.t(
+                    'Used by push analysis {{names}}. Delete the push analysis first.',
+                    {
+                        names: row.original.pushAnalyses.join(', '),
+                        interpolation: { escapeValue: false },
+                    }
+                )}
+            </div>
+        )}
+    </>
+)
+
+const ActionsCell = ({ row, table }: CellContext<DashboardRow, unknown>) => {
+    const { isRefreshing, dashboardUrl, requestDelete } = getMeta(table)
+    return (
+        <div className={styles.actions}>
+            <a
+                href={dashboardUrl(row.original.id)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={i18n.t('Open {{name}} in the Dashboard app', {
+                    name: row.original.name,
+                    interpolation: { escapeValue: false },
+                })}
+            >
+                {i18n.t('Open')}
+            </a>
+            <Button
+                small
+                secondary
+                dataTest="delete-row"
+                disabled={isRefreshing || row.original.pushAnalyses.length > 0}
+                aria-label={i18n.t('Delete {{name}}', {
+                    name: row.original.name,
+                    interpolation: { escapeValue: false },
+                })}
+                onClick={() => requestDelete([row.original.id])}
+            >
+                {i18n.t('Delete')}
+            </Button>
+        </div>
+    )
+}
+
 const columnHelper = createColumnHelper<DashboardRow>()
+
+// Cells are components defined once, here: defining them inside
+// DashboardTable would remount every cell whenever a refresh starts or ends
+const buildColumns = (check: CheckCode) => [
+    columnHelper.display({
+        id: 'select',
+        header: SelectAllHeader,
+        cell: SelectRowCell,
+    }),
+    columnHelper.accessor('name', {
+        header: i18n.t('Dashboard'),
+        cell: NameCell,
+    }),
+    columnHelper.accessor('createdDaysAgo', {
+        header: i18n.t('Created (days ago)'),
+        cell: (info) => daysCell(info.getValue(), i18n.t('Unknown')),
+        sortingFn: daysSortingFn,
+        enableGlobalFilter: false,
+    }),
+    columnHelper.accessor('lastUpdatedDaysAgo', {
+        header: i18n.t('Last updated (days ago)'),
+        cell: (info) => daysCell(info.getValue(), i18n.t('Unknown')),
+        sortingFn: daysSortingFn,
+        enableGlobalFilter: false,
+    }),
+    ...(check === CHECK_NOT_VIEWED
+        ? [
+              columnHelper.accessor('lastViewedDaysAgo', {
+                  header: i18n.t('Last viewed (days ago)'),
+                  cell: (info) => daysCell(info.getValue(), i18n.t('Never')),
+                  sortingFn: daysSortingFn,
+                  enableGlobalFilter: false,
+              }),
+          ]
+        : []),
+    columnHelper.accessor('publicAccess', {
+        header: i18n.t('Public access'),
+        cell: (info) => publicAccessLabel(info.getValue()),
+        enableGlobalFilter: false,
+    }),
+    columnHelper.display({
+        id: 'actions',
+        header: i18n.t('Actions'),
+        cell: ActionsCell,
+    }),
+]
 
 const useDashboardUrl = () => {
     const { baseUrl } = useConfig()
@@ -85,7 +252,7 @@ const useDashboardUrl = () => {
 const getSortDirection = (column: Column<DashboardRow>) =>
     column.getIsSorted() || 'default'
 
-type DashboardTableProps = {
+interface DashboardTableProps {
     rows: DashboardRow[]
     check: CheckCode
     isRefreshing: boolean
@@ -109,12 +276,12 @@ export const DashboardTable = ({
             desc: true,
         },
     ])
-    const [globalFilter, setGlobalFilterState] = useState('')
+    const [globalFilter, setGlobalFilter] = useState('')
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
     // Never keep rows selected that the search hides: they would be deleted
     // along with the visible ones
-    const setGlobalFilter = (value: string) => {
-        setGlobalFilterState(value)
+    const changeSearch = (value: string) => {
+        setGlobalFilter(value)
         setRowSelection({})
     }
     const [pendingDelete, setPendingDelete] = useState<string[] | null>(null)
@@ -125,161 +292,9 @@ export const DashboardTable = ({
             critical ? { critical: true } : { success: true }
     )
 
-    const columns = useMemo(() => {
-        return [
-            columnHelper.display({
-                id: 'select',
-                header: ({ table }) => {
-                    // Rows blocked by a push analysis cannot be selected
-                    const filtered = table
-                        .getFilteredRowModel()
-                        .rows.filter((r) => r.getCanSelect())
-                    const selectedCount = filtered.filter((r) =>
-                        r.getIsSelected()
-                    ).length
-                    return (
-                        <Checkbox
-                            dense
-                            dataTest="select-all"
-                            disabled={isRefreshing || filtered.length === 0}
-                            label={
-                                <span className={styles.srOnly}>
-                                    {i18n.t(
-                                        'Select all dashboards matching the search'
-                                    )}
-                                </span>
-                            }
-                            checked={
-                                filtered.length > 0 &&
-                                selectedCount === filtered.length
-                            }
-                            indeterminate={
-                                selectedCount > 0 &&
-                                selectedCount < filtered.length
-                            }
-                            onChange={({ checked }) =>
-                                setRowSelection(
-                                    checked
-                                        ? Object.fromEntries(
-                                              filtered.map((r) => [r.id, true])
-                                          )
-                                        : {}
-                                )
-                            }
-                        />
-                    )
-                },
-                cell: ({ row }) => (
-                    <Checkbox
-                        dense
-                        dataTest="select-row"
-                        disabled={isRefreshing || !row.getCanSelect()}
-                        label={
-                            <span className={styles.srOnly}>
-                                {i18n.t('Select {{name}}', {
-                                    name: row.original.name,
-                                    interpolation: { escapeValue: false },
-                                })}
-                            </span>
-                        }
-                        checked={row.getIsSelected()}
-                        onChange={({ checked }) => row.toggleSelected(checked)}
-                    />
-                ),
-            }),
-            columnHelper.accessor('name', {
-                header: i18n.t('Dashboard'),
-                cell: ({ row }) => (
-                    <>
-                        {row.original.name}
-                        {row.original.pushAnalyses.length > 0 && (
-                            <div
-                                className={styles.blocked}
-                                data-test="push-analysis-note"
-                            >
-                                {i18n.t(
-                                    'Used by push analysis {{names}}. Delete the push analysis first.',
-                                    {
-                                        names: row.original.pushAnalyses.join(
-                                            ', '
-                                        ),
-                                        interpolation: { escapeValue: false },
-                                    }
-                                )}
-                            </div>
-                        )}
-                    </>
-                ),
-            }),
-            columnHelper.accessor('createdDaysAgo', {
-                header: i18n.t('Created (days ago)'),
-                cell: (info) => daysCell(info.getValue(), i18n.t('Unknown')),
-                sortingFn: daysSortingFn,
-                enableGlobalFilter: false,
-            }),
-            columnHelper.accessor('lastUpdatedDaysAgo', {
-                header: i18n.t('Last updated (days ago)'),
-                cell: (info) => daysCell(info.getValue(), i18n.t('Unknown')),
-                sortingFn: daysSortingFn,
-                enableGlobalFilter: false,
-            }),
-            ...(check === CHECK_NOT_VIEWED
-                ? [
-                      columnHelper.accessor('lastViewedDaysAgo', {
-                          header: i18n.t('Last viewed (days ago)'),
-                          cell: (info) =>
-                              daysCell(info.getValue(), i18n.t('Never')),
-                          sortingFn: daysSortingFn,
-                          enableGlobalFilter: false,
-                      }),
-                  ]
-                : []),
-            columnHelper.accessor('publicAccess', {
-                header: i18n.t('Public access'),
-                cell: (info) => publicAccessLabel(info.getValue()),
-                enableGlobalFilter: false,
-            }),
-            columnHelper.display({
-                id: 'actions',
-                header: i18n.t('Actions'),
-                cell: ({ row }) => (
-                    <div className={styles.actions}>
-                        <a
-                            href={dashboardUrl(row.original.id)}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={i18n.t(
-                                'Open {{name}} in the Dashboard app',
-                                {
-                                    name: row.original.name,
-                                    interpolation: { escapeValue: false },
-                                }
-                            )}
-                        >
-                            {i18n.t('Open')}
-                        </a>
-                        <Button
-                            small
-                            secondary
-                            dataTest="delete-row"
-                            disabled={
-                                isRefreshing ||
-                                row.original.pushAnalyses.length > 0
-                            }
-                            aria-label={i18n.t('Delete {{name}}', {
-                                name: row.original.name,
-                                interpolation: { escapeValue: false },
-                            })}
-                            onClick={() => setPendingDelete([row.original.id])}
-                        >
-                            {i18n.t('Delete')}
-                        </Button>
-                    </div>
-                ),
-            }),
-        ]
-    }, [check, dashboardUrl, isRefreshing])
+    const columns = useMemo(() => buildColumns(check), [check])
 
+    // oxlint-disable-next-line react/incompatible-library -- this app is not built with the React Compiler, the only thing the rule protects
     const table = useReactTable({
         data: rows,
         columns,
@@ -288,8 +303,9 @@ export const DashboardTable = ({
         getRowId: (row) => row.id,
         enableRowSelection: (row) => row.original.pushAnalyses.length === 0,
         onSortingChange: setSorting,
+        meta: { isRefreshing, dashboardUrl, requestDelete: setPendingDelete },
         onGlobalFilterChange: (updater) =>
-            setGlobalFilter(
+            changeSearch(
                 typeof updater === 'function' ? updater(globalFilter) : updater
             ),
         onRowSelectionChange: setRowSelection,
@@ -366,15 +382,15 @@ export const DashboardTable = ({
                             ariaLabel: i18n.t('Search dashboards by name'),
                         } as object)}
                         value={globalFilter}
-                        onChange={({ value }) => setGlobalFilter(value ?? '')}
+                        onChange={({ value }) => changeSearch(value ?? '')}
                         dataTest="search"
                     />
                 </div>
                 {isRefreshing && (
-                    <span className={styles.refreshing} role="status">
+                    <output className={styles.refreshing}>
                         <CircularLoader extrasmall />
                         {i18n.t('Updating results…')}
-                    </span>
+                    </output>
                 )}
                 <Button
                     destructive

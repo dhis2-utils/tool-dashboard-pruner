@@ -8,11 +8,12 @@ import {
     ModalTitle,
 } from '@dhis2/ui'
 import React, { useState } from 'react'
-import { DeleteResult, useDeleteDashboards } from '@/hooks/useDeleteDashboards'
+import type { DeleteResult } from '@/hooks/useDeleteDashboards'
+import { useDeleteDashboards } from '@/hooks/useDeleteDashboards'
 
 const MAX_LISTED_NAMES = 10
 
-type DeleteDashboardsModalProps = {
+interface DeleteDashboardsModalProps {
     ids: string[]
     names: string[]
     onCancel: () => void

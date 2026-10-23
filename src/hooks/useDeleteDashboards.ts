@@ -1,6 +1,7 @@
 import { useDataEngine } from '@dhis2/app-runtime'
 import i18n from '@dhis2/d2-i18n'
 import { useMutation } from '@tanstack/react-query'
+import { forEachConcurrently } from '@/lib/concurrency'
 
 const MAX_CONCURRENT_DELETES = 5
 
@@ -13,10 +14,16 @@ const describeError = (error: unknown) => {
         : message
 }
 
-export type DeleteFailure = { id: string; message: string }
-export type DeleteResult = { deleted: string[]; failed: DeleteFailure[] }
+export interface DeleteFailure {
+    id: string
+    message: string
+}
+export interface DeleteResult {
+    deleted: string[]
+    failed: DeleteFailure[]
+}
 
-type UseDeleteDashboardsOptions = {
+interface UseDeleteDashboardsOptions {
     onProgress?: (done: number) => void
     onSettled?: (result: DeleteResult) => void
 }
@@ -29,33 +36,23 @@ export const useDeleteDashboards = ({
 
     const deleteAll = async (ids: string[]): Promise<DeleteResult> => {
         const result: DeleteResult = { deleted: [], failed: [] }
-        const queue = [...ids]
 
-        const worker = async () => {
-            for (let id = queue.shift(); id; id = queue.shift()) {
-                try {
-                    await engine.mutate({
-                        resource: 'dashboards',
-                        id,
-                        type: 'delete',
-                    })
-                    result.deleted.push(id)
-                } catch (error) {
-                    result.failed.push({
-                        id,
-                        message: describeError(error),
-                    })
-                }
-                onProgress?.(result.deleted.length + result.failed.length)
+        await forEachConcurrently(ids, MAX_CONCURRENT_DELETES, async (id) => {
+            try {
+                await engine.mutate({
+                    resource: 'dashboards',
+                    id,
+                    type: 'delete',
+                })
+                result.deleted.push(id)
+            } catch (error) {
+                result.failed.push({
+                    id,
+                    message: describeError(error),
+                })
             }
-        }
-
-        await Promise.all(
-            Array.from(
-                { length: Math.min(MAX_CONCURRENT_DELETES, ids.length) },
-                worker
-            )
-        )
+            onProgress?.(result.deleted.length + result.failed.length)
+        })
         return result
     }
 

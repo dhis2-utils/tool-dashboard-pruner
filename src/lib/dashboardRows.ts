@@ -1,4 +1,4 @@
-import {
+import type {
     DashboardProperties,
     DashboardRow,
     IntegrityIssue,
@@ -39,7 +39,7 @@ export const parsePublicAccess = (
     return 'none'
 }
 
-type BuildRowsOptions = {
+interface BuildRowsOptions {
     issues: IntegrityIssue[]
     dashboards: DashboardProperties[]
     pushAnalysesByDashboard?: Map<string, string[]>
