@@ -1,24 +1,31 @@
-"""Seed test dashboards and users for the e2e suite; writes seed-state.json.
+"""Seeding and cleanup for the e2e suite.
 
-Idempotent: removes earlier PRUNER-TEST dashboards first. Run against a
-disposable instance only — it creates users and dashboards.
+Every object gets a run-unique name and a client-side UID, and is recorded
+in the dataStore (e2e-state/tool-dashboard-pruner) before it is created. A
+run starts by deleting whatever an earlier, killed run left in the record.
 """
-import json
-import os
+
+import secrets
+from dataclasses import dataclass, field
 
 import dhis2api as api
 
-PREFIX = "PRUNER-TEST"
-TESTER = "pruner_tester"
-VIEWER = "pruner_viewer"
-TEST_PASSWORD = "Pruner-Test-1234"
-# Authority to open the installed app (M_<app key>)
-APP_AUTHORITY = "M_DashboardPrunerTool"
-STATE_FILE = os.path.join(os.path.dirname(__file__), "seed-state.json")
+STATE_NAMESPACE = "e2e-state"
+STATE_KEY = "tool-dashboard-pruner"
+STATE_PATH = f"dataStore/{STATE_NAMESPACE}/{STATE_KEY}"
+FIXED_PREFIX = "E2E tool-dashboard-pruner"
+# Delete in this order: a push analysis blocks deleting its dashboard, and a
+# user can't be deleted while a dashboard is owned by them
+DELETE_ORDER = ["pushAnalysis", "dashboards", "users", "userRoles"]
+# Push analysis was removed in 2.43
+PUSH_ANALYSIS_REMOVED_IN = 43
+XSS_MARKER = "__e2eXss"
+XSS_NAME_SUFFIX = f'xss <img src=x onerror="window.{XSS_MARKER}=1">'
 
 # name suffix -> (owner, public sharing, access granted to the tester)
 # The private dashboards belong to the viewer and are shared with nobody, so
 # the superuser running the app has no sharing-based access to them.
+VIEWER = "viewer"
 DASHBOARDS = {
     "private-1": (VIEWER, "--------", None),
     "private-2": (VIEWER, "--------", None),
@@ -26,147 +33,203 @@ DASHBOARDS = {
     "private-4": (VIEWER, "--------", None),
     "shared-edit": (None, "--------", "rw------"),
     "public-view": (None, "r-------", None),
+    "gone": (None, "--------", None),
     # Up to 2.42 this one also gets a push analysis, which blocks deleting it
     "push": (None, "--------", None),
+    XSS_NAME_SUFFIX: (None, "--------", None),
 }
-PUSH_ANALYSIS_NAME = f"{PREFIX} push analysis"
-# Push analysis was removed in 2.43
-PUSH_ANALYSIS_REMOVED_IN = 43
 
 
-def has_push_analysis():
-    _, info = api.get("system/info?fields=version")
-    minor = int(info["version"].split(".")[1].split("-")[0])
-    return minor < PUSH_ANALYSIS_REMOVED_IN
+class SeedError(RuntimeError):
+    """Seeding or cleanup could not be done: the suite can't run."""
 
 
-def remove_old_push_analyses():
-    _, body = api.get(f"pushAnalysis?fields=id&paging=false&filter=name:like:{PREFIX}")
-    for push in body["pushAnalysis"]:
-        api.delete(f"pushAnalysis/{push['id']}")
+def _expect(status, body, ok=(200, 201)):
+    if status not in ok:
+        raise SeedError(f"HTTP {status}: {body}")
 
 
-def create_push_analysis(dashboard_uid):
-    payload = {"name": PUSH_ANALYSIS_NAME, "title": PUSH_ANALYSIS_NAME,
-               "dashboard": {"id": dashboard_uid}, "recipientUserGroups": []}
-    status, body = api.post("pushAnalysis", payload)
-    assert status in (200, 201), body
+class StateRecord:
+    """The record of what this suite created, kept on the instance."""
+
+    def __init__(self):
+        self.objects = []
+
+    def _save(self):
+        payload = {"objects": self.objects}
+        status, body = api.put(STATE_PATH, payload)
+        if status == 404:
+            status, body = api.post(STATE_PATH, payload)
+        _expect(status, body)
+
+    def add(self, kind, uid):
+        self.objects.append({"type": kind, "id": uid})
+        self._save()
+
+    def load(self):
+        status, body = api.get(STATE_PATH)
+        self.objects = (body or {}).get("objects", []) if status == 200 else []
+
+    def delete_all(self):
+        """Delete every recorded object, then the record. Returns what is left."""
+        left = []
+        for obj in [o for o in self.objects if o["type"] == "users"]:
+            left += _delete_jobs_of(obj["id"])
+        for kind in DELETE_ORDER:
+            for obj in [o for o in self.objects if o["type"] == kind]:
+                status, body = api.delete(f"{kind}/{obj['id']}")
+                if status not in (200, 204, 404):
+                    left.append(f"{kind}/{obj['id']}: HTTP {status} {body}")
+        if left:
+            # Keep the record so the next run tries again
+            self.objects = [o for o in self.objects if any(o["id"] in m for m in left)]
+            self._save()
+        else:
+            api.delete(STATE_PATH)
+            self.objects = []
+        return left
 
 
-def remove_old_dashboards():
-    # Up to 2.41 list queries only return dashboards shared with the caller,
-    # even for superusers, so also list as the owner of the private ones
-    for auth in ({}, {"user": VIEWER, "password": TEST_PASSWORD}):
+def _delete_jobs_of(user_id):
+    """Delete the one-off jobs a user's integrity runs left behind.
+
+    Running a check creates a job configuration that references the user,
+    and DHIS2 refuses to delete a user that one references.
+    """
+    left = []
+    for prop in ("lastUpdatedBy", "createdBy"):
         status, body = api.get(
-            f"dashboards?fields=id&paging=false&filter=name:like:{PREFIX}", **auth
+            f"jobConfigurations?fields=id,schedulingType&paging=false&filter={prop}.id:eq:{user_id}"
         )
-        for dashboard in (body or {}).get("dashboards", []) if status == 200 else []:
-            api.delete(f"dashboards/{dashboard['id']}")
+        for job in (body or {}).get("jobConfigurations", []) if status == 200 else []:
+            if job.get("schedulingType") != "ONCE_ASAP":
+                left.append(f"jobConfigurations/{job['id']}: a scheduled job references user {user_id}")
+                continue
+            status, body = api.delete(f"jobConfigurations/{job['id']}")
+            if status not in (200, 204, 404):
+                left.append(f"jobConfigurations/{job['id']}: HTTP {status} {body}")
+    return left
 
 
-def ensure_role(name, authorities):
-    _, body = api.get(f"userRoles?fields=id,name&filter=name:eq:{name}")
-    payload = {"name": name, "authorities": authorities}
-    if body["userRoles"]:
-        uid = body["userRoles"][0]["id"]
-        status, body = api.request("PUT", f"userRoles/{uid}", payload)
-        assert status == 200, body
-        return uid
-    status, body = api.post("userRoles", payload)
-    assert status in (200, 201), body
-    return body["response"]["uid"]
+@dataclass
+class Seed:
+    prefix: str
+    password: str
+    users: dict = field(default_factory=dict)
+    dashboards: dict = field(default_factory=dict)
+    push_analysis: str | None = None
+    app_authority: str = ""
+
+    def name(self, suffix):
+        return f"{self.prefix} {suffix}"
 
 
-def ensure_user(username, role_id, root_ou):
-    _, body = api.get(f"users?fields=id&filter=username:eq:{username}")
-    if body["users"]:
-        return body["users"][0]["id"]
-    payload = {
-        "firstName": "Pruner",
-        "surname": username,
-        "username": username,
-        "password": TEST_PASSWORD,
-        "userRoles": [{"id": role_id}],
-        "organisationUnits": [{"id": root_ou}],
-    }
-    status, body = api.post("users", payload)
-    assert status in (200, 201), body
-    return body["response"]["uid"]
+def _create(record, kind, payload, **auth):
+    payload = {"id": api.new_uid(), **payload}
+    record.add(kind, payload["id"])
+    status, body = api.post(kind, payload, **auth)
+    _expect(status, body)
+    return payload["id"]
 
 
-def create_dashboard(suffix, owner, public, tester_access, tester_id):
-    auth = {"user": owner, "password": TEST_PASSWORD} if owner else {}
-    status, body = api.post("dashboards", {"name": f"{PREFIX} {suffix}"}, **auth)
-    assert status in (200, 201), body
-    uid = body["response"]["uid"]
+def _set_sharing(uid, public, user_accesses, **auth):
     _, sharing = api.get(f"sharing?type=dashboard&id={uid}", **auth)
     obj = sharing["object"]
     obj["publicAccess"] = public
-    obj["userAccesses"] = (
-        [{"id": tester_id, "access": tester_access}] if tester_access else []
-    )
+    obj["userAccesses"] = user_accesses
     obj["userGroupAccesses"] = []
     status, body = api.post(f"sharing?type=dashboard&id={uid}", {"object": obj}, **auth)
-    assert status == 200, body
+    _expect(status, body, ok=(200,))
+
+
+def app_authority(app_key):
+    """The authority that opens the app, as the server names it.
+
+    DHIS2 names it M_ plus the key without its non-alphanumeric characters.
+    Read it from the server where possible: 2.41 answers /api/authorities
+    with a 500 until a Struts page has been loaded. A wrong name fails the
+    non-superuser flows, which open the app with it.
+    """
+    wanted = "M_" + "".join(c for c in app_key if c.isalnum())
+    status, body = api.get("authorities")
+    if status != 200:
+        return wanted
+    for authority in body["systemAuthorities"]:
+        if authority["id"].lower() == wanted.lower():
+            return authority["id"]
+    raise SeedError(f"No app authority {wanted} after installing {app_key}")
+
+
+def _create_users(record, seed, run_id):
+    # Users don't need an organisation unit for this app; give them the
+    # root when there is one, as a real user would have
+    _, roots = api.get("organisationUnits?fields=id&filter=level:eq:1&paging=false")
+    org_units = [{"id": ou["id"]} for ou in roots["organisationUnits"][:1]]
+    roles = {
+        "tester": ["F_PERFORM_MAINTENANCE", "F_DASHBOARD_PUBLIC_ADD", seed.app_authority],
+        "viewer": ["F_DASHBOARD_PUBLIC_ADD", seed.app_authority],
+    }
+    for kind, authorities in roles.items():
+        role = _create(record, "userRoles", {"name": seed.name(f"{kind} role"), "authorities": authorities})
+        username = f"e2e_pruner_{kind}_{run_id.lower()}"
+        uid = _create(record, "users", {
+            "firstName": seed.prefix,
+            "surname": kind,
+            "username": username,
+            "password": seed.password,
+            "userRoles": [{"id": role}],
+            "organisationUnits": org_units,
+        })
+        seed.users[kind] = {"id": uid, "username": username}
+
+
+def _create_dashboards(record, seed):
+    tester_id = seed.users["tester"]["id"]
+    for suffix, (owner, public, tester_access) in DASHBOARDS.items():
+        auth = {}
+        if owner:
+            auth = {"user": seed.users[owner]["username"], "password": seed.password}
+        uid = _create(record, "dashboards", {"name": seed.name(suffix)}, **auth)
+        accesses = [{"id": tester_id, "access": tester_access}] if tester_access else []
+        _set_sharing(uid, public, accesses, **auth)
+        seed.dashboards[suffix] = uid
+
+
+def create_dashboard(record, seed, suffix):
+    """One more private, empty dashboard, owned by the superuser."""
+    uid = _create(record, "dashboards", {"name": seed.name(suffix)})
+    _set_sharing(uid, "--------", [])
+    seed.dashboards[suffix] = uid
     return uid
 
 
-def superuser_access(uid):
-    """What the superuser may do with a dashboard nobody shared with them."""
-    status, body = api.get(f"dashboards/{uid}?fields=sharing[owner,public,users],access")
-    return {"status": status, **(body or {})}
-
-
-def main():
-    push_supported = has_push_analysis()
-    if push_supported:
-        remove_old_push_analyses()
-    remove_old_dashboards()
-    _, roots = api.get("organisationUnits?fields=id&filter=level:eq:1")
-    root_ou = roots["organisationUnits"][0]["id"]
-    tester_role = ensure_role(
-        "Pruner tester", ["F_PERFORM_MAINTENANCE", "F_DASHBOARD_PUBLIC_ADD", APP_AUTHORITY]
+def seed_all(record, run_id, app_key):
+    seed = Seed(
+        prefix=f"{FIXED_PREFIX} {run_id}",
+        # Meets the password policy: upper, lower, digit, special, 8+ chars
+        password="E2e-" + secrets.token_hex(8) + "!Aa1",
+        app_authority=app_authority(app_key),
     )
-    viewer_role = ensure_role("Pruner viewer", ["F_DASHBOARD_PUBLIC_ADD", APP_AUTHORITY])
-    tester_id = ensure_user(TESTER, tester_role, root_ou)
-    ensure_user(VIEWER, viewer_role, root_ou)
-
-    dashboards = {
-        suffix: create_dashboard(suffix, owner, public, access, tester_id)
-        for suffix, (owner, public, access) in DASHBOARDS.items()
-    }
-    if push_supported:
-        create_push_analysis(dashboards["push"])
-
-    # Expectations come from what the server actually reports after seeding
-    _, read_back = api.get(
-        f"dashboards?fields=id,name,sharing[public]&paging=false&filter=name:like:{PREFIX}"
-    )
-    _, tester_view = api.get(
-        "dashboards?fields=id,access[delete]&paging=false"
-        f"&filter=name:like:{PREFIX}",
-        user=TESTER,
-        password=TEST_PASSWORD,
-    )
-    empty_ids = {issue["id"] for issue in api.run_check("dashboards_no_items")}
-    state = {
-        "dashboards": dashboards,
-        "read_back": read_back["dashboards"],
-        "tester_deletable": sorted(
-            d["id"] for d in tester_view["dashboards"] if d["access"]["delete"]
-        ),
-        "all_seeded_flagged_empty": all(uid in empty_ids for uid in dashboards.values()),
-        "empty_check_total": len(empty_ids),
-        "push_analysis": push_supported,
-        "superuser_on_foreign_private": superuser_access(dashboards["private-1"]),
-        "users": {"tester": TESTER, "viewer": VIEWER, "password": TEST_PASSWORD},
-    }
-    with open(STATE_FILE, "w") as handle:
-        json.dump(state, handle, indent=2)
-    keys = ("tester_deletable", "all_seeded_flagged_empty", "empty_check_total",
-            "superuser_on_foreign_private")
-    print(json.dumps({k: state[k] for k in keys}, indent=1))
+    _create_users(record, seed, run_id)
+    _create_dashboards(record, seed)
+    if api.server_minor_version() < PUSH_ANALYSIS_REMOVED_IN:
+        seed.push_analysis = _create(record, "pushAnalysis", {
+            "name": seed.name("push analysis"),
+            "title": seed.name("push analysis"),
+            "dashboard": {"id": seed.dashboards["push"]},
+            "recipientUserGroups": [],
+        })
+    _verify(seed)
+    return seed
 
 
-if __name__ == "__main__":
-    main()
+def _verify(seed):
+    """Read back what was seeded: a 2xx alone doesn't prove the write."""
+    for suffix, uid in seed.dashboards.items():
+        status, body = api.get(f"dashboards/{uid}?fields=name,sharing[public]")
+        if status != 200 or body["name"] != seed.name(suffix):
+            raise SeedError(f"Seeded dashboard {suffix} reads back as {status} {body}")
+    if seed.push_analysis:
+        status, body = api.get(f"pushAnalysis/{seed.push_analysis}?fields=dashboard[id]")
+        if status != 200 or body.get("dashboard", {}).get("id") != seed.dashboards["push"]:
+            raise SeedError(f"Seeded push analysis reads back as {status} {body}")

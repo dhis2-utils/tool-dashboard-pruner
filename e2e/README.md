@@ -1,37 +1,51 @@
+> [!WARNING]
+> This suite creates and deletes dashboards, users, user roles and push analyses, and installs and uninstalls the app. Only run it against a throwaway DHIS2 instance that you can reset or recreate. Never run it against a production, shared or play server.
+
 # End-to-end tests
 
-Playwright acceptance suite for the Dashboard Pruner app. It runs against a live DHIS2 instance and
-**deletes dashboards and creates users and roles** — only use a disposable test instance.
+The suite installs the built app on a DHIS2 instance and drives it in Chromium through Playwright for Python. It checks every result against the server through the API. `run.sh` follows the e2e contract (version 1) of [TESTING.md](https://github.com/dhis2-utils/reference-tool-conventions/blob/main/TESTING.md) in reference-tool-conventions.
 
-Requires Python 3 with Playwright (`pip install playwright && playwright install chromium`).
+## Get a throwaway instance
 
-## 1. Seed test data
+Start a local DHIS2 instance, for example on port 8080, as described in [DHIS2 in Docker](https://developers.dhis2.org/docs/tutorials/dhis2-docker/). An empty database works; so does a demo database.
 
-```
-DHIS2_URL=http://my-test-instance:8080 python3 e2e/seed.py
-```
+## Install the dependencies
 
-Creates six empty `PRUNER-TEST …` dashboards (four private ones owned by a non-superuser, one shared
-with the test user with edit access, one public with view access), the users `pruner_tester` (has
-`F_PERFORM_MAINTENANCE`) and `pruner_viewer` (does not), and writes the expected state to
-`e2e/seed-state.json`. Rerun it before every test run.
-
-`DHIS2_USER` / `DHIS2_PASSWORD` select the superuser (default `local_admin` / `district`).
-
-## 2. Run the suite
-
-Against the app installed on the instance (install `build/bundle/*.zip` first, e.g.
-`curl -u admin:district -F file=@build/bundle/Dashboard-Pruner-Tool-1.0.0.zip $DHIS2_URL/api/apps`):
+The suite needs Python 3.10 or later.
 
 ```
-DHIS2_URL=http://my-test-instance:8080 python3 e2e/test_pruner.py
+pip install -r e2e/requirements.txt
+python3 -m playwright install chromium
 ```
 
-Against the development server (`pnpm start --proxy $DHIS2_URL`):
+## Run it
+
+Build the app first (`pnpm run build`), then:
 
 ```
-DHIS2_URL=http://my-test-instance:8080 APP_MODE=dev APP_URL=http://localhost:3000 \
-    DEV_SERVER=http://localhost:8080 python3 e2e/test_pruner.py
+DHIS2_URL=http://localhost:8080 DHIS2_USER=admin DHIS2_PASS=district \
+LABEL=2.42 RESULTS_DIR=/tmp/out APP_ZIP=$PWD/build/bundle/tool-dashboard-pruner-1.0.0.zip \
+  e2e/run.sh
 ```
 
-Results and screenshots go to `e2e/results/` (`RESULTS_DIR` to change).
+| Variable                   | Required | Meaning                                                            |
+| -------------------------- | -------- | ------------------------------------------------------------------ |
+| `DHIS2_URL`                | yes      | Instance base URL                                                  |
+| `DHIS2_USER`, `DHIS2_PASS` | yes      | A user with the `ALL` authority                                    |
+| `APP_ZIP`                  | yes      | Absolute path of the built bundle                                  |
+| `RESULTS_DIR`              | yes      | Existing directory for `results.json` and screenshots              |
+| `LABEL`                    | no       | Label for output and screenshot names; default: the server version |
+| `APP_KEY`                  | no       | Default: the key the server reports for the installed app          |
+| `CHECK_TIMEOUT_MS`         | no       | How long to wait for an integrity check; default 300000            |
+
+Exit code 0 means every test passed, 1 that at least one failed, and 2 that the suite could not run (`results.json` then has an `error` field).
+
+## What it does
+
+1. Deletes whatever an earlier, killed run left behind, using the record in the dataStore at `e2e-state/tool-dashboard-pruner`.
+2. Installs `APP_ZIP` and reads the app key from `/api/apps`.
+3. Seeds two user roles, two users, nine empty dashboards and, on 2.42 and earlier, a push analysis. Every name starts with `E2E tool-dashboard-pruner <run id>`, and each object is recorded before it is created.
+4. Runs the flows in `flows.py`: as a superuser, as a user with the maintenance authority, and as a user without it.
+5. Deletes everything it created, and the one-off integrity jobs its users started, then uninstalls the app.
+
+The flows cover both checks, search, public access labels, a dashboard name with HTML in it, the **Open** link, single and bulk deletes, cancel, a dashboard deleted by someone else while the dialog is open, switching checks after a delete, **Run check again**, dashboards blocked by a push analysis, the non-superuser and missing-authority views, and the absence of console and HTTP errors.
